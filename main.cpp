@@ -4,38 +4,52 @@
 #include "time.h"
 #include "signal.h"
 #include "unistd.h"
-#include "gpio.h"
+#include "gpiod.h"
 #include "pthread.h"
 #include "sys/time.h"
 #include "sys/resource.h"
 
 #define DISPLAY_LED_PIN 7 // CON2-P29 --> PA7
 
-void* led_thr(void*);
 void setDigits(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
-int8_t initLED();
+void setPriority();
 int8_t initChip();
 void interrupt(int);
 
 FILE* chipFD = NULL;
-gpio_t led(DISPLAY_LED_PIN);
 volatile uint8_t runDisplay = 1;
 
 int main(int argc, char** argv) {
-	int ret = initChip();
-	if(ret != 0) return ret;
-	ret = initLED();
-	if(ret != 0) {
-		fclose(chipFD);
-		return ret;
-	}
-	puts("Setting RT priority and other process options");
-	struct sched_param params;
-	params.sched_priority = sched_get_priority_max(SCHED_FIFO);
-	if(pthread_setschedparam(pthread_self(), SCHED_FIFO, &params) != 0)
-		puts("Failed to set realtime priority!");
-	puts("Attaching interrupt handler, Use Ctrl+C to stop!");
-	signal(SIGINT, interrupt);
+	int ret;
+	/* Initialize the shift register */
+	ret = initChip();
+	if(ret != 0) goto gtfo_chip;
+
+	/* Initialize the colon LED output */
+	enum gpiod_line_value val;
+
+	struct gpiod_chip *chip;
+
+	struct gpiod_line_settings *setts;
+	setts = gpiod_line_settings_new();
+	gpiod_line_settings_set_direction(setts, GPIOD_LINE_DIRECTION_OUTPUT);
+	gpiod_line_settings_set_drive(setts, GPIOD_LINE_DRIVE_PUSH_PULL);
+	gpiod_line_settings_set_output_value(setts, GPIOD_LINE_VALUE_INACTIVE);
+
+	struct gpiod_line_config *cfg;
+	unsigned int offset = 0;
+	cfg = gpiod_line_config_new();
+	gpiod_line_config_add_line_settings(cfg, &offset, 1, setts);
+
+	struct gpiod_request_config *rcfg;
+	rcfg = gpiod_request_config_new();
+	gpiod_request_config_set_consumer(rcfg, "time-display");
+
+	struct gpiod_line_request *rqst;
+	rqst = gpiod_chip_request_lines(chip, rcfg, cfg);
+
+	/* Set the RT priority */
+	setPriority();
 
 	time_t rawTime;
 	struct tm* tInfo;
@@ -53,11 +67,11 @@ int main(int argc, char** argv) {
 			hours % 10, hours / 10);
 
 		if(lastSeconds != seconds) {
-			led.write(1);
+			gpiod_line_request_set_value(rqst, 0, GPIOD_LINE_VALUE_ACTIVE);
 			cntr = 0;
 		}
 		if(cntr > 1) {
-			led.write(0);
+			gpiod_line_request_set_value(rqst, 0, GPIOD_LINE_VALUE_INACTIVE);
 			cntr = 0;
 		} else cntr++;
 
@@ -66,13 +80,18 @@ int main(int argc, char** argv) {
 	}
 
 	setDigits(0, 0, 0, 0, 0, 0);
-	led.write(0);
+	gpiod_line_request_set_value(rqst, 0, GPIOD_LINE_VALUE_INACTIVE);
 
-	puts("Closing LED GPIO pin!");
-	led.end();
+	puts("Closing LED GPIO info!");
+	gpiod_line_request_release(rqst);
+	gpiod_line_config_free(cfg);
+	gpiod_line_settings_free(setts);
+	gpiod_request_config_free(rcfg);
 	puts("Closing 74HC595 driver!");
+gtfo_led:
 	fclose(chipFD);
-	return 0;
+gtfo_chip:
+	return ret;
 }
 void interrupt(int sig) {
 	runDisplay = 0;
@@ -116,6 +135,16 @@ void setDigits(uint8_t d1, uint8_t d2, uint8_t d3, uint8_t d4, uint8_t d5, uint8
 	buf[0] = ~buf[0]; buf[1] = ~buf[1]; buf[2] = ~buf[2];
 	// Write the buffer's data
 	fwrite(buf, 3, 1, chipFD);
+}
+void setPriority() {
+	struct sched_param params;
+
+	puts("Setting RT priority and other process options");
+	params.sched_priority = sched_get_priority_max(SCHED_FIFO);
+	if(pthread_setschedparam(pthread_self(), SCHED_FIFO, &params) != 0)
+		puts("Failed to set realtime priority!");
+	puts("Attaching interrupt handler, Use Ctrl+C to stop!");
+	signal(SIGINT, interrupt);
 }
 int8_t initChip() {
 	puts("Opening shift registers at /dev/74HC595");

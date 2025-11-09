@@ -1,14 +1,12 @@
-OBJS=gpio.o
 CFLAGS=-Wno-write-strings -Wno-pointer-arith
 LIBS=-lpthread
 CC=g++
 
 all: main
 
-clean_objs:
+clean:
 	rm -fv *.o
-clean: clean_objs
-	rm -fv bin/*
+	rm -fv main
 
 install:
 	sudo cp bin/main /bin/time_display
@@ -23,7 +21,5 @@ uninstall:
 	sudo rm /bin/time_display
 	sudo rm /etc/systemd/system/time_display.service
 
-%.o: %.cpp
-	$(CC) $(LIBS) -c $< -o $@ $(CFLAGS)
 main: $(OBJS)
-	$(CC) $(LIBS) $(CFLAGS) main.cpp $(OBJS) -o bin/main
+	$(CC) $(LIBS) $(CFLAGS) main.cpp $(OBJS) -o main
