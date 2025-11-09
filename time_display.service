@@ -1,0 +1,11 @@
+[Unit]
+Description=Time display service
+
+[Service]
+ExecStart=/home/jeremiah/time_display/bin/main
+KillSignal=SIGINT
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
