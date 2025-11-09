@@ -21,9 +21,11 @@ volatile uint8_t runDisplay = 1;
 
 int main(int argc, char** argv) {
 	int ret;
+
 	/* Initialize the shift register */
 	ret = initChip();
-	if(ret != 0) goto gtfo_chip;
+	if(ret != 0)
+		goto gtfo_chip;
 
 	/* Initialize the colon LED output */
 	enum gpiod_line_value val;
@@ -37,7 +39,7 @@ int main(int argc, char** argv) {
 	gpiod_line_settings_set_output_value(setts, GPIOD_LINE_VALUE_INACTIVE);
 
 	struct gpiod_line_config *cfg;
-	unsigned int offset = 0;
+	const unsigned int offset = DISPLAY_LED_PIN;
 	cfg = gpiod_line_config_new();
 	gpiod_line_config_add_line_settings(cfg, &offset, 1, setts);
 
@@ -88,8 +90,10 @@ int main(int argc, char** argv) {
 	gpiod_line_settings_free(setts);
 	gpiod_request_config_free(rcfg);
 	puts("Closing 74HC595 driver!");
+
 gtfo_led:
 	fclose(chipFD);
+
 gtfo_chip:
 	return ret;
 }
@@ -154,21 +158,5 @@ int8_t initChip() {
 		return 1;
 	}
 	setbuf(chipFD, NULL);
-	return 0;
-}
-int8_t initLED() {
-	printf("Opening GPIO%d as LED output\n", DISPLAY_LED_PIN);
-	gpio_err_t err;
-	err = led.begin();
-	if(err != GPIO_SUCCESS) {
-		printf("Failed to open GPIO pin: %s\n", gpio_err_tostr(err));
-		return 1;
-	}
-	err = led.set_direction(GPIO_DIRECTION_OUTPUT);
-	if(err != GPIO_SUCCESS) {
-		printf("Failed to set GPIO as output: %s\n", gpio_err_tostr(err));
-		led.end();
-		return 1;
-	}
 	return 0;
 }

@@ -1,6 +1,6 @@
 CFLAGS=-Wno-write-strings -Wno-pointer-arith
-LIBS=-lpthread
-CC=g++
+LIBS=-lpthread -lgpiod
+CC=gcc
 
 all: main
 
@@ -22,4 +22,4 @@ uninstall:
 	sudo rm /etc/systemd/system/time_display.service
 
 main: $(OBJS)
-	$(CC) $(LIBS) $(CFLAGS) main.cpp $(OBJS) -o main
+	$(CC) $(LIBS) $(CFLAGS) main.c $(OBJS) -o main
