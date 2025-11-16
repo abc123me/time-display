@@ -83,11 +83,11 @@ int main(int argc, char** argv) {
 			hours % 10, hours / 10);
 
 		if(lastSeconds != seconds) {
-			gpiod_line_request_set_value(ref.rqst, 0, GPIOD_LINE_VALUE_ACTIVE);
+			gpiod_line_request_set_value(ref.rqst, DISPLAY_LED_PIN, GPIOD_LINE_VALUE_ACTIVE);
 			cntr = 0;
 		}
 		if(cntr > 1) {
-			gpiod_line_request_set_value(ref.rqst, 0, GPIOD_LINE_VALUE_INACTIVE);
+			gpiod_line_request_set_value(ref.rqst, DISPLAY_LED_PIN, GPIOD_LINE_VALUE_INACTIVE);
 			cntr = 0;
 		} else cntr++;
 
@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
 
 	/* Clear the display prior to exit */
 	set_digits(0, 0, 0, 0, 0, 0);
-	gpiod_line_request_set_value(ref.rqst, 0, GPIOD_LINE_VALUE_INACTIVE);
+	gpiod_line_request_set_value(ref.rqst, DISPLAY_LED_PIN, GPIOD_LINE_VALUE_INACTIVE);
 
 	/* Delete the PID file if one exists */
 	if(pid_fname && pid_fp && remove(pid_fname) != 0)
