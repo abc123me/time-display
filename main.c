@@ -31,6 +31,7 @@ int main(int argc, char** argv) {
 	enum gpiod_line_value val;
 
 	struct gpiod_chip *chip;
+	chip = gpiod_chip_open("/dev/gpiochip0");
 
 	struct gpiod_line_settings *setts;
 	setts = gpiod_line_settings_new();
@@ -151,7 +152,7 @@ void setPriority() {
 	signal(SIGINT, interrupt);
 }
 int8_t initChip() {
-	puts("Opening shift registers at /dev/74HC595");
+	puts("Opening shift registers at /dev/chip74hc595");
 	chipFD = fopen("/dev/chip74hc595", "wb");
 	if(!chipFD) {
 		puts("Failed to open shift registers!");
